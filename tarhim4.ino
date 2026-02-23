@@ -14,9 +14,6 @@
 const char* ssid     = "Kantor Pusat✋😎🤚";
 const char* password = "kantorpusat1973";
 
-//const char* ssid     = "AM Mart";
-//const char* password = "admin123";
-
 // --- KONFIGURASI PIN ---
 LiquidCrystal_I2C lcd(0x27, 16, 2); 
 SoftwareSerial mySoftwareSerial(D1, D2); 
@@ -31,13 +28,11 @@ String idKota = "1501";
 String vImsak="--:--", vSubuh="--:--", vTerbit="--:--", vDzuhur="--:--", vAshar="--:--", vMaghrib="--:--", vIsya="--:--";
 int totalFiles = 0;
 int volumeAlat = 15;
-
-// PERUBAHAN: Mengganti mode boolean menjadi mode angka (0=Tarhim, 1=Bel, 2=IP)
 int lcdMode = 0; 
 
 int pinRelay = D8;       // Relay Ampli (Tarhim)
 int pinRelayBel = D7;    // Relay Bel Elektrik
-int pinTombol = D4;      // Tombol
+int pinTombol = D4;      // Tombol LCD
 
 // Variabel Kontrol Audio Tarhim
 int currentFilePlaying = 0;
@@ -55,12 +50,16 @@ int bKali[15];
 int bDurasi[15];
 bool bAktif[15];
 
-// Variabel Kontrol Mesin Bel (Non-Blocking)
 bool isBelRinging = false;
 int belRingsLeft = 0;
 int currentBelDuration = 0;
 unsigned long lastBelToggleTime = 0;
 bool belRelayState = false;
+
+// --- VARIABEL KONTROL MANUAL (REMOTE UI) ---
+bool manualAmpli = false;
+bool manualBel = false;
+unsigned long lastBelPing = 0; // Untuk proteksi Failsafe
 
 void saveConfig() {
   File f = LittleFS.open("/config.json", "w");
@@ -145,12 +144,12 @@ String getFileOptions(int selected) {
 }
 
 void handleRoot() {
-  String s = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1.0'>";
+  String s = "<!DOCTYPE html><html><head><meta name='viewport' content='width=device-width, initial-scale=1.0, user-scalable=no'>";
   s += "<title>Tarhim & Bel Dashboard</title>";
   s += "<link rel='icon' type='image/png' sizes='32x32' href='https://img.almiftah.online/assets/Icon.png'>";
   s += "<style>";
   s += ":root { --primary: #38bdf8; --success: #22c55e; --warning: #facc15; --danger: #ef4444; --bg: #0f172a; --card: #1e293b; --text: #f8fafc; --text-muted: #94a3b8; --border: #334155; }";
-  s += "body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; display: flex; justify-content: center; }";
+  s += "body { font-family: 'Segoe UI', system-ui, sans-serif; background: var(--bg); color: var(--text); padding: 15px; margin: 0; display: flex; justify-content: center; user-select: none; }";
   s += ".card { background: var(--card); padding: 25px; border-radius: 16px; box-shadow: 0 10px 25px -5px rgba(0,0,0,0.5); width: 100%; max-width: 600px; box-sizing: border-box; }";
   s += "h2 { text-align: center; color: var(--primary); margin-top: 0; font-size: 1.5rem; letter-spacing: 0.5px; }";
   s += "h4 { color: var(--text); border-bottom: 2px solid var(--border); padding-bottom: 8px; margin-top: 20px; }";
@@ -169,7 +168,8 @@ void handleRoot() {
   s += ".b-play { background: var(--success); padding: 8px 12px; font-size: 12px; width: 100%; margin-top: 8px; color: #0f172a; }";
   s += ".b-pause { background: var(--warning); padding: 8px; font-size: 12px; flex: 1; margin: 0; color: #0f172a; }";
   s += ".b-stop { background: var(--danger); padding: 8px; font-size: 12px; flex: 1; margin: 0; color: #fff; }";
-  s += ".btn:hover { transform: translateY(-2px); filter: brightness(1.1); }";
+  s += ".btn:hover { filter: brightness(1.1); }";
+  s += ".btn:active { transform: scale(0.97); }";
   s += ".btn-group { display: flex; gap: 5px; width: 100%; margin-top: 8px; }";
   s += ".durasi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 12px; }";
   s += ".durasi-item { background: rgba(0,0,0,0.15); border: 1px solid var(--border); padding: 15px; border-radius: 12px; display: flex; flex-direction: column; align-items: center; }";
@@ -183,7 +183,6 @@ void handleRoot() {
   s += "input:checked + .slider:before { transform: translateX(20px); }";
   s += ".tabs { display: flex; justify-content: center; gap: 10px; border-bottom: 2px solid var(--border); margin-bottom: 20px; }";
   s += ".tab-btn { background: none; border: none; padding: 10px 20px; color: var(--text-muted); font-size: 15px; font-weight: 600; cursor: pointer; transition: 0.3s; border-bottom: 2px solid transparent; margin-bottom: -2px; }";
-  s += ".tab-btn:hover { color: var(--text); }";
   s += ".tab-btn.active { color: var(--primary); border-bottom: 2px solid var(--primary); }";
   s += ".tab-content { display: none; animation: fadeEffect 0.3s; }";
   s += ".tab-content.active { display: block; }";
@@ -191,10 +190,18 @@ void handleRoot() {
   s += ".footer { text-align: center; font-size: 12px; color: var(--text-muted); margin-top: 30px; border-top: 1px solid var(--border); padding-top: 15px; }";
   s += "</style></head><body>";
   
-  s += "<div id='s-data' data-play='" + String(isPlaying ? 1 : 0) + "' data-pause='" + String(isPaused ? 1 : 0) + "' data-file='" + String(currentFilePlaying) + "' style='display:none;'></div>";
+  // Data State tersembunyi
+  s += "<div id='s-data' data-play='" + String(isPlaying ? 1 : 0) + "' data-pause='" + String(isPaused ? 1 : 0) + "' data-file='" + String(currentFilePlaying) + "' data-ampli='" + String(manualAmpli ? 1 : 0) + "' style='display:none;'></div>";
 
   s += "<div class='card'>";
   s += "<h2>Auto Tarhim & Bel</h2>";
+  
+  // --- KONTROL MANUAL REMOTE ---
+  s += "<div style='display:flex; gap:10px; margin-bottom:20px; margin-top:15px;'>";
+  s += "<button id='btn-ampli' type='button' class='btn' style='flex:1; background: " + String(manualAmpli ? "var(--success)" : "var(--border)") + "; color: #fff;' onclick='toggleAmpli()'>Ampli: " + String(manualAmpli ? "ON" : "OFF") + "</button>";
+  s += "<button id='btn-bel' type='button' class='btn' style='flex:1; background: var(--primary); color: #0f172a;'>🔔 Tahan Bel</button>";
+  s += "</div>";
+
   s += "<form action='/save'>";
   s += "<div class='grid-2'>";
   s += "<div class='input-group'><label class='title'>ID Kota</label><input type='text' name='kota' value='" + idKota + "'></div>";
@@ -207,6 +214,7 @@ void handleRoot() {
   s += "<button type='button' class='tab-btn' onclick=\"openTab(event, 'Bel')\">Bel Set</button>";
   s += "</div>";
   
+  // TAB TARHIM
   s += "<div id='Tarhim' class='tab-content active'>";
   s += "<div style='overflow-x:auto;'><table><tr><th>Jadwal</th><th>Jam</th><th>Aktif</th><th>Pilih File</th></tr>";
   String names[] = {"Imsak", "Subuh", "Terbit", "Dzuhur", "Ashar", "Maghrib", "Isya"};
@@ -219,7 +227,7 @@ void handleRoot() {
   }
   s += "</table></div>";
   s += "<h4>Set Durasi Audio</h4>";
-  s += "<p>satuan detik</p>";
+  s += "<p style='font-size:12px; color:var(--text-muted); margin-top:-5px;'>satuan detik</p>";
   s += "<div class='durasi-grid'>";
   for(int i = 1; i <= totalFiles; i++){
     s += "<div class='durasi-item'><span>Audio " + String(i) + "</span>";
@@ -234,6 +242,7 @@ void handleRoot() {
   }
   s += "</div></div>";
 
+  // TAB BEL
   s += "<div id='Bel' class='tab-content'>";
   s += "<div style='overflow-x:auto;'><table><tr><th>Aktif</th><th>Jam</th><th class='td-center'>X Bunyi</th><th class='td-center'>Lama (Detik)</th></tr>";
   for(int i = 0; i < 15; i++) {
@@ -250,6 +259,7 @@ void handleRoot() {
   s += "<div class='footer'>Developed &#9829; by <b style='color:var(--primary);'>Muhsin-IT &#169;</b><br>Waktu Perangkat: <b id='jam' style='color:var(--primary);'>" + timeClient.getFormattedTime() + "</b></div>";
   s += "</div>";
 
+  // --- JAVASCRIPT ---
   s += "<script>";
   s += "function openTab(evt, tabName) {";
   s += "  let i, tabcontent, tablinks;";
@@ -261,10 +271,49 @@ void handleRoot() {
   s += "  if(evt) evt.currentTarget.classList.add('active');";
   s += "  localStorage.setItem('activeTab', tabName);";
   s += "}";
+  
   s += "document.addEventListener('DOMContentLoaded', () => {";
   s += "  let active = localStorage.getItem('activeTab');";
   s += "  if(active) { let btn = document.querySelector(`.tab-btn[onclick*=\"'${active}'\"]`); if(btn) btn.click(); }";
   s += "});";
+
+  // JS Kontrol Manual Ampli
+  s += "let ampliOn = " + String(manualAmpli ? "true" : "false") + ";";
+  s += "function toggleAmpli() {";
+  s += "  ampliOn = !ampliOn;";
+  s += "  let btn = document.getElementById('btn-ampli');";
+  s += "  btn.innerText = 'Ampli: ' + (ampliOn ? 'ON' : 'OFF');";
+  s += "  btn.style.background = ampliOn ? 'var(--success)' : 'var(--border)';";
+  s += "  fetch('/ampli?state=' + (ampliOn ? 1 : 0));";
+  s += "}";
+
+  // JS Kontrol Manual Bel (Tahan / Heartbeat)
+  s += "let belPingTimer;";
+  s += "const btnBel = document.getElementById('btn-bel');";
+  s += "function startBel(e) {";
+  s += "  if(e && e.cancelable) e.preventDefault();"; // Hindari scrolling di HP
+  s += "  fetch('/bel?state=1');";
+  s += "  belPingTimer = setInterval(()=>fetch('/bel?state=1'), 800);"; // Ping tiap 800ms
+  s += "  btnBel.style.background = 'var(--danger)';";
+  s += "  btnBel.style.color = '#fff';";
+  s += "}";
+  s += "function stopBel(e) {";
+  s += "  if(e && e.cancelable) e.preventDefault();";
+  s += "  clearInterval(belPingTimer);";
+  s += "  fetch('/bel?state=0');";
+  s += "  btnBel.style.background = 'var(--primary)';";
+  s += "  btnBel.style.color = '#0f172a';";
+  s += "}";
+  
+  // Event Listeners untuk Touch HP dan Mouse PC
+  s += "btnBel.addEventListener('mousedown', startBel);";
+  s += "btnBel.addEventListener('mouseup', stopBel);";
+  s += "btnBel.addEventListener('mouseleave', stopBel);"; // Jika jari/mouse geser keluar tombol
+  s += "btnBel.addEventListener('touchstart', startBel, {passive: false});";
+  s += "btnBel.addEventListener('touchend', stopBel, {passive: false});";
+  s += "btnBel.addEventListener('touchcancel', stopBel, {passive: false});";
+
+  // JS Jam Berjalan
   s += "let tf = " + String(totalFiles) + ";";
   s += "let timeStr = '" + timeClient.getFormattedTime() + "';";
   s += "let [h, m, sec] = timeStr.split(':').map(Number);";
@@ -272,6 +321,8 @@ void handleRoot() {
   s += "  sec++; if(sec > 59) { sec = 0; m++; } if(m > 59) { m = 0; h++; } if(h > 23) { h = 0; }";
   s += "  document.getElementById('jam').innerText = String(h).padStart(2,'0') + ':' + String(m).padStart(2,'0') + ':' + String(sec).padStart(2,'0');";
   s += "}, 1000);";
+
+  // JS Sinkronisasi Status (AJAX Polling)
   s += "setInterval(function() {";
   s += "  fetch('/').then(function(res) { return res.text(); }).then(function(html) {";
   s += "    let parser = new DOMParser().parseFromString(html, 'text/html');";
@@ -280,6 +331,16 @@ void handleRoot() {
   s += "      let isPlay = sData.dataset.play === '1';";
   s += "      let isPause = sData.dataset.pause === '1';";
   s += "      let curFile = sData.dataset.file;";
+  
+  // Sinkronisasi status tombol Ampli
+  s += "      let isAmpli = sData.dataset.ampli === '1';";
+  s += "      ampliOn = isAmpli;";
+  s += "      let btnA = document.getElementById('btn-ampli');";
+  s += "      if(btnA) {";
+  s += "        btnA.innerText = 'Ampli: ' + (ampliOn ? 'ON' : 'OFF');";
+  s += "        btnA.style.background = ampliOn ? 'var(--success)' : 'var(--border)';";
+  s += "      }";
+
   s += "      for(let i=1; i<=tf; i++) {";
   s += "        let btnDiv = document.getElementById('btn-' + i);";
   s += "        if(btnDiv) {";
@@ -301,7 +362,7 @@ void handleRoot() {
 void playAudio(int f) {
   if (f <= 0) f = 1; 
   currentFilePlaying = f;
-  digitalWrite(pinRelay, HIGH); 
+  digitalWrite(pinRelay, HIGH); // Nyalakan relay untuk auto
   lcd.setCursor(0,1); lcd.print("Ampli Warming Up");
   delay(5000); 
   myDFPlayer.volume(volumeAlat);
@@ -315,7 +376,8 @@ void playAudio(int f) {
 void stopAudio() {
   currentFilePlaying = 0;
   myDFPlayer.stop();
-  digitalWrite(pinRelay, LOW); 
+  // PERBAIKAN: Jangan matikan ampli jika manual Ampli sedang ON
+  digitalWrite(pinRelay, manualAmpli ? HIGH : LOW); 
   isPlaying = false;
   isPaused = false;
 }
@@ -348,6 +410,29 @@ void setup() {
   
   fetchJadwal();
   
+  // --- ENDPOINT UNTUK TOMBOL MANUAL ---
+  server.on("/ampli", []() {
+    if(server.hasArg("state")) manualAmpli = (server.arg("state") == "1");
+    // Jika manual Ampli ON ATAU audio otomatis sedang Play, relay harus menyala
+    digitalWrite(pinRelay, (manualAmpli || isPlaying) ? HIGH : LOW);
+    server.send(200, "text/plain", "OK");
+  });
+
+  server.on("/bel", []() {
+    if(server.hasArg("state")) {
+      if(server.arg("state") == "1") {
+        manualBel = true;
+        lastBelPing = millis(); // Catat waktu terakhir nerima ping
+        digitalWrite(pinRelayBel, HIGH);
+      } else {
+        manualBel = false;
+        // Hanya matikan bel jika bel otomatis sedang tidak berbunyi
+        if(!belRelayState) digitalWrite(pinRelayBel, LOW);
+      }
+    }
+    server.send(200, "text/plain", "OK");
+  });
+
   server.on("/", handleRoot);
   server.on("/save", []() {
     idKota = server.arg("kota"); volumeAlat = server.arg("vol").toInt();
@@ -373,7 +458,13 @@ void loop() {
   server.handleClient();
   timeClient.update();
   
-  // PERUBAHAN: Tombol berputar 3 mode (0: Tarhim, 1: Bel, 2: IP)
+  // PROTEKSI FAILSAFE: Jika tidak nerima ping > 1.5 detik, asumsikan HP putus!
+  if (manualBel && (millis() - lastBelPing > 1500)) {
+    manualBel = false;
+    // Matikan relay hanya jika sistem bel otomatis tidak sedang mengambil alih
+    if (!belRelayState) digitalWrite(pinRelayBel, LOW);
+  }
+
   if (digitalRead(pinTombol) == LOW) { 
     delay(200); 
     lcdMode++; 
@@ -389,7 +480,7 @@ void loop() {
 
   if (h == 21 && m == 0 && s == 0) fetchJadwal();
   
-  // LOGIKA TARHIM
+  // LOGIKA TARHIM OTOMATIS
   if (!isPlaying && millis() - lastTriggerTime > 60000) {
     String times[] = {vImsak, vSubuh, vTerbit, vDzuhur, vAshar, vMaghrib, vIsya};
     for(int i=0; i<7; i++) {
@@ -407,16 +498,17 @@ void loop() {
     }
   }
 
+  // Jika lagu tamat, matikan relay HANYA JIKA ampli manual sedang posisi OFF
   if (myDFPlayer.available()) {
     uint8_t type = myDFPlayer.readType();
     if (type == DFPlayerPlayFinished && isPlaying) {
-      digitalWrite(pinRelay, LOW); 
+      digitalWrite(pinRelay, manualAmpli ? HIGH : LOW); 
       isPlaying = false;
       currentFilePlaying = 0; 
     }
   }
 
-  // LOGIKA BEL ELEKTRIK
+  // LOGIKA BEL ELEKTRIK OTOMATIS
   static int lastBelMinute = -1;
   if (!isBelRinging && m != lastBelMinute) {
     String hm = jamSkrgStr.substring(0,5); 
@@ -437,17 +529,18 @@ void loop() {
   if (isBelRinging) {
     if (belRelayState) {
       if (millis() - lastBelToggleTime >= currentBelDuration) {
-        digitalWrite(pinRelayBel, LOW); 
         belRelayState = false;
         lastBelToggleTime = millis();
         belRingsLeft--;
+        // Saat jeda, matikan relay (Kecuali tombol HP sedang ditekan paksa)
+        if (!manualBel) digitalWrite(pinRelayBel, LOW); 
       }
     } else {
       if (millis() - lastBelToggleTime >= 2000) {
         if (belRingsLeft > 0) {
-          digitalWrite(pinRelayBel, HIGH); 
           belRelayState = true;
           lastBelToggleTime = millis();
+          digitalWrite(pinRelayBel, HIGH); 
         } else {
           isBelRinging = false; 
         }
@@ -459,17 +552,14 @@ void loop() {
   // TAMPILAN LCD DENGAN 3 MODE
   // ============================================
   if (lcdMode == 2) {
-    // --- MODE 2: ALAMAT IP ---
     lcd.setCursor(0,0);
     lcd.print("Akses Browser:  ");
     lcd.setCursor(0,1); lcd.print(WiFi.localIP().toString() + "    ");
     
   } else if (lcdMode == 1) {
-    // --- MODE 1: JADWAL BEL SELANJUTNYA ---
     long minDiffBel = 999999;
     String nextBelTime = "--:--";
     
-    // Cari jadwal bel terdekat hari ini
     for(int i=0; i<15; i++) {
       if(!bAktif[i] || bWaktu[i] == "--:--") continue;
       int th = bWaktu[i].substring(0,2).toInt();
@@ -485,7 +575,6 @@ void loop() {
       }
     }
     
-    // Jika tidak ada bel tersisa hari ini, cari jadwal paling pagi besok
     if (nextBelTime == "--:--") {
       for(int i=0; i<15; i++) {
         if(bAktif[i] && bWaktu[i] != "--:--") {
@@ -502,16 +591,16 @@ void loop() {
     }
 
     lcd.setCursor(0,0);
-    lcd.print(jamSkrgStr);
+    lcd.print(jamSkrgStr.substring(0,5));
     lcd.print(" | Bel   ");
 
     lcd.setCursor(0,1);
-    if (isBelRinging) {
+    if (isBelRinging || manualBel) { // LCD akan bilang bunyi saat ditekan manual
       lcd.print(" BEL BERBUNYI.. ");
     } else {
       if (nextBelTime != "--:--") {
         char buf[25]; 
-        sprintf(buf, "%02ld:%02ld:%02ld | %s ", minDiffBel/3600, (minDiffBel%3600)/60, minDiffBel%60, nextBelTime.c_str());
+        sprintf(buf, "%02ld:%02ld:%02ld| %s ", minDiffBel/3600, (minDiffBel%3600)/60, minDiffBel%60, nextBelTime.c_str());
         lcd.print(buf);
       } else {
         lcd.print("Semua Bel Off   ");
@@ -519,7 +608,6 @@ void loop() {
     }
 
   } else {
-    // --- MODE 0: JADWAL TARHIM (DEFAULT) ---
     String times[] = {vImsak, vSubuh, vTerbit, vDzuhur, vAshar, vMaghrib, vIsya};
     String lbl[] = {"Imsak", "Subuh", "Terbit", "Dzuhur", "Ashar", "Maghrb", "Isya"};
     long minDiffAdzan = 999999; 
@@ -564,13 +652,14 @@ void loop() {
     }
 
     lcd.setCursor(0,0);
-    lcd.print(jamSkrgStr);
-    lcd.print("| ");
+    lcd.print(jamSkrgStr.substring(0,5)); // Hapus detik (Opsi ke-2 yang lebih rapi)
+    lcd.print(" | ");
     lcd.print(nextLbl);
     for(int i=0; i<(7 - nextLbl.length()); i++) lcd.print(" "); 
 
     lcd.setCursor(0,1);
-    if (isBelRinging) {
+    // Info layar utama juga menginformasikan jika bel/ampli sedang hidup
+    if (isBelRinging || manualBel) {
       lcd.print(" BEL BERBUNYI.. ");
     } else if (isPlaying) {
       lcd.print("   PLAYING...   ");
