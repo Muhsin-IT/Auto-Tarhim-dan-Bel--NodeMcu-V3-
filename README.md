@@ -19,13 +19,13 @@ Semua pengaturan disimpan di dalam memori internal ESP8266 menggunakan sistem *L
 
 ## 🛠️ Kebutuhan Hardware
 
-1.NodeMCU ESP8266 (atau Wemos D1 Mini).
-2.Modul DFPlayer Mini + MicroSD Card (berisi file MP3).
-3.Modul Relay 2 Channel (Active HIGH).
-4.LCD 16x2 + Modul I2C.
-5.Tombol Push Button (Tactile Switch).
-6.Amplifier & Speaker (Terkoneksi ke Relay 1).
-7.Bel Elektrik (Terkoneksi ke Relay 2).
+1. NodeMCU ESP8266 (atau Wemos D1 Mini).
+2. Modul DFPlayer Mini + MicroSD Card (berisi file MP3).
+3. Modul Relay 2 Channel (Active HIGH).
+4. LCD 16x2 + Modul I2C.
+5. Tombol Push Button (Tactile Switch).
+6. Amplifier & Speaker (Terkoneksi ke Relay 1).
+7. Bel Elektrik (Terkoneksi ke Relay 2).
 
 ## 📌 Skema Pin (Wiring)
 
@@ -62,9 +62,4 @@ Pastikan Anda telah menginstal pustaka (*library*) berikut melalui **Arduino Lib
    const char* password = "PASSWORD_WIFI_ANDA";
 4. isi file audio pada kartu memory , masukan file audio di dalam folder **mp3** dan penaaan fila audio dengan format 0001.mp3 dst
     struktur folder seperti ini
-   
-    SD Card/
-    └── mp3/
-        ├── 0001.mp3
-        ├── 0002.mp3
-        └── 0003.mp3
+![Skema Rangkaian](file.png)
