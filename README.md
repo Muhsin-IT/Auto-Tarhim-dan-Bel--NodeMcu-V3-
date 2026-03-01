@@ -65,5 +65,5 @@ Pastikan Anda telah menginstal pustaka (*library*) berikut melalui **Arduino Lib
 
 ## 🛠️ Skema Rangkaian
 - Gambar Diagram Wiring Auto Tarhim dan Bel 
-- ⬇️ **Download Gambar :** [Klik di sini](https://raw.githubusercontent.com/Muhsin-IT/Auto-Tarhim-dan-Bel--NodeMcu-V3-/blob/main/Diagram-Auto-Tarhim-Esp-By-Muhsin-It.png)
+
 - ![Skema Rangkaian](Diagram-Auto-Tarhim-Esp-By-Muhsin-It.png)
