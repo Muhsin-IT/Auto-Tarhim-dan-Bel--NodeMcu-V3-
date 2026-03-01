@@ -21,10 +21,10 @@ Semua pengaturan disimpan di dalam memori internal ESP8266 menggunakan sistem *L
 
 1. NodeMCU ESP8266 (atau Wemos D1 Mini).
 2. Modul DFPlayer Mini + MicroSD Card (berisi file MP3).
-3. Modul Relay 2 Channel (Active HIGH).
+3. 2X Modul Relay 1 Channel 5v (Active HIGH).
 4. LCD 16x2 + Modul I2C.
 5. Tombol Push Button (Tactile Switch).
-6. Amplifier & Speaker (Terkoneksi ke Relay 1).
+6. Amplifier & Speaker (Terkoneksi ke Relay).
 7. Bel Elektrik (Terkoneksi ke Relay 2).
 
 ## 📌 Skema Pin (Wiring)
