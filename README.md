@@ -33,8 +33,8 @@ Berikut adalah pemetaan pin berdasarkan kode program:
 
 | Komponen | Pin Modul | Pin NodeMCU ESP8266 | Keterangan |
 | :--- | :--- | :--- | :--- |
-| **DFPlayer Mini** | RX | `D1` |Menggunakan SoftwareSerial |
-| | TX | `D2` |Menggunakan SoftwareSerial |
+| **DFPlayer Mini** | RX | `D2` |Menggunakan SoftwareSerial |
+| | TX | `D1` |Menggunakan SoftwareSerial |
 | **LCD 16x2 I2C** | SDA | `D6` |Dideklarasikan via `Wire.begin(D6, D5)` |
 | | SCL | `D5` |Dideklarasikan via `Wire.begin(D6, D5)` |
 | **Relay Ampli** | IN 1 | `D8` |Active HIGH |
@@ -63,5 +63,8 @@ Pastikan Anda telah menginstal pustaka (*library*) berikut melalui **Arduino Lib
 4. isi file audio pada kartu memory , masukan file audio di dalam folder **mp3** dan penamaan fila audio dengan format 0001.mp3 dst
 5. struktur folder seperti ini ![Struktur Folder](file.png)
 
-## Skema Rangkaian
-- Gambar Diagram Wiring Auto Tarhim dan Bel ![Skema Rangkaian](Diagram-Auto-Tarhim-Esp-By-Muhsin-It.png)
+## 🛠️ Skema Rangkaian
+- Gambar Diagram Wiring Auto Tarhim dan Bel 
+- ⬇️ **Download Gambar :** [Klik di sini](https://raw.githubusercontent.com/USERNAME/REPO/main/Diagram-Auto-Tarhim-Esp-By-Muhsin-It.png)
+- ![Skema Rangkaian](Diagram-Auto-Tarhim-Esp-By-Muhsin-It.png)
+- 
