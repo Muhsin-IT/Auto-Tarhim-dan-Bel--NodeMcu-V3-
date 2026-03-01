@@ -64,4 +64,4 @@ Pastikan Anda telah menginstal pustaka (*library*) berikut melalui **Arduino Lib
 5. struktur folder seperti ini ![Struktur Folder](file.png)
 
 ## Skema Rangkaian
-- Gambar Diagram Wiring Auto Tarhim dan Bel [Skema Rangkaian](Diagram-Auto-Tarhim-Esp-By-Muhsin-It.png)
+- Gambar Diagram Wiring Auto Tarhim dan Bel ![Skema Rangkaian](Diagram-Auto-Tarhim-Esp-By-Muhsin-It.png)
